@@ -65,11 +65,13 @@ public class WeaponQuickDrawService(IMod mod, IModHelper helper) : BaseService(m
 
     private void ExecuteWeaponAttack(int weaponItem)
     {
+        if (!Context.IsPlayerFree) return;
         Farmer player = Game1.player;
         if (!this.IsValidItemIndex(player, weaponItem)) return;
         if (this.IsUsingWeapon(player)) return;
         this.OriginalItem = player.CurrentToolIndex;
         player.CurrentToolIndex = weaponItem;
+        if (player.usingSlingshot) player.usingSlingshot = false;
         player.BeginUsingTool();
     }
 
