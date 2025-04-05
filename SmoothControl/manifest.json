@@ -1,0 +1,11 @@
+﻿{
+    "Name": "Smooth Control",
+    "Author": "issacyee",
+    "Version": "0.1.0",
+    "MinimumApiVersion": "4.1.10",
+    "MinimumGameVersion": "1.6.15",
+    "Description": "You can smoothly control the character.",
+    "UniqueID": "Issacyee.SmoothControl",
+    "EntryDll": "SmoothControl.dll",
+    "UpdateKeys": []
+}
