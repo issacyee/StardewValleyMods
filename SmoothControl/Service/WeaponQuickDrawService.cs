@@ -6,15 +6,13 @@ using StardewValley.Inventories;
 namespace Issacyee.SmoothControl.Service;
 
 /// <summary>
-/// Sword Quick Draw feature, allowing players to instantly unsheathe their blade during any state.
+/// Weapon Quick Draw feature, allowing players to instantly unsheathe their blade during any state.
 /// </summary>
-public class SwordQuickDrawService : IService
+public class WeaponQuickDrawService(IMod mod, IModHelper helper) : BaseService(mod, helper)
 {
-    public readonly int CategorySword = -98;
-
     private int? OriginalItem;
 
-    public void _UpdateTicking(UpdateTickingEventArgs e)
+    internal override void _UpdateTicking(UpdateTickingEventArgs e)
     {
         if (this.TryGetOriginalItem(out int originalItem))
             this.RevertToOriginalItem(originalItem);
@@ -39,14 +37,14 @@ public class SwordQuickDrawService : IService
         this.OriginalItem = null;
     }
 
-    public void _ButtonPressed(ButtonPressedEventArgs e)
+    internal override void _ButtonPressed(ButtonPressedEventArgs e)
     {
         if (e.Button != SButton.Q) return;
-        if (this.TryGetSwordItem(out int sowrdItem))
-            this.ExecuteSwordAttack(sowrdItem);
+        if (this.TryGetWeaponItem(out int sowrdItem))
+            this.ExecuteWeaponAttack(sowrdItem);
     }
 
-    private bool TryGetSwordItem(out int sowrdItem)
+    private bool TryGetWeaponItem(out int sowrdItem)
     {
         sowrdItem = -1;
 
@@ -55,7 +53,7 @@ public class SwordQuickDrawService : IService
         {
             Item item = inventory[i];
             if (item is null) continue;
-            if (item.Category == this.CategorySword)
+            if (item.Category == Object.weaponCategory)
             {
                 sowrdItem = i;
                 return true;
@@ -65,13 +63,13 @@ public class SwordQuickDrawService : IService
         return false;
     }
 
-    private void ExecuteSwordAttack(int swordItem)
+    private void ExecuteWeaponAttack(int weaponItem)
     {
         Farmer player = Game1.player;
-        if (!this.IsValidItemIndex(player, swordItem)) return;
-        if (this.IsUsingSword(player)) return;
+        if (!this.IsValidItemIndex(player, weaponItem)) return;
+        if (this.IsUsingWeapon(player)) return;
         this.OriginalItem = player.CurrentToolIndex;
-        player.CurrentToolIndex = swordItem;
+        player.CurrentToolIndex = weaponItem;
         player.BeginUsingTool();
     }
 
@@ -80,9 +78,9 @@ public class SwordQuickDrawService : IService
         return itemIndex >= 0 && itemIndex < player.Items.Count;
     }
 
-    private bool IsUsingSword(Farmer player)
+    private bool IsUsingWeapon(Farmer player)
     {
         if (player.CurrentItem is null) return false;
-        return player.CurrentItem.Category == this.CategorySword && player.UsingTool;
+        return player.CurrentItem.Category == Object.weaponCategory && player.UsingTool;
     }
 }
