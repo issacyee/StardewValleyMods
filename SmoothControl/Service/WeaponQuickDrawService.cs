@@ -6,7 +6,7 @@ using StardewValley.Inventories;
 namespace Issacyee.SmoothControl.Service;
 
 /// <summary>
-/// Weapon Quick Draw feature, allowing players to instantly unsheathe their blade during any state.
+/// Weapon Quick Draw feature, allowing player to quickly draw your weapon in most states.
 /// </summary>
 public class WeaponQuickDrawService : BaseService
 {
@@ -25,14 +25,11 @@ public class WeaponQuickDrawService : BaseService
     internal override void _UpdateTicking(UpdateTickingEventArgs e)
     {
         if (this.Strategies.TryGetValue(this.Config.WeaponQuickDraw.Mode, out BaseWeaponQuickDrawStrategy? strategy))
+        {
             strategy._UpdateTicking(e);
-    }
-
-    internal override void _ButtonPressed(ButtonPressedEventArgs e)
-    {
-        if (e.Button != SButton.Q) return;
-        if (this.Strategies.TryGetValue(this.Config.WeaponQuickDraw.Mode, out BaseWeaponQuickDrawStrategy? strategy))
-            strategy.ExecuteWeaponQuickDraw();
+            if (this.Config.WeaponQuickDraw.ShortcutKey.JustPressed())
+                strategy.ExecuteWeaponQuickDraw();
+        }
     }
 
     private abstract class BaseWeaponQuickDrawStrategy(ModConfig.WeaponQuickDrawMode mode)

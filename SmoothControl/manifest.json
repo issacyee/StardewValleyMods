@@ -1,7 +1,7 @@
 ﻿{
     "Name": "Smooth Control",
     "Author": "issacyee",
-    "Version": "0.2.1",
+    "Version": "0.3.0",
     "MinimumApiVersion": "4.1.10",
     "MinimumGameVersion": "1.6.15",
     "Description": "You can smoothly control the character.",
