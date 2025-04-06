@@ -16,4 +16,8 @@
     <Compile Update="**/*.*.cs" DependentUpon="$([System.IO.Path]::GetFileNameWithoutExtension('%(Filename)')).cs"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\ThirdPartyNotices.txt" Link="ThridPartyNotices.txt" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
+
 </Project>
