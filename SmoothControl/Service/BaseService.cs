@@ -3,10 +3,11 @@ using StardewModdingAPI.Events;
 
 namespace Issacyee.SmoothControl.Service;
 
-public abstract class BaseService(IMod mod, IModHelper helper)
+public abstract class BaseService(IMod mod, IModHelper helper, ModConfig config)
 {
     protected IMod Mod { get; init; } = mod;
     protected IModHelper Helper { get; init; } = helper;
+    protected ModConfig Config { get; set; } = config;
 
     internal virtual void _UpdateTicking(UpdateTickingEventArgs e)
     {

@@ -8,81 +8,153 @@ namespace Issacyee.SmoothControl.Service;
 /// <summary>
 /// Weapon Quick Draw feature, allowing players to instantly unsheathe their blade during any state.
 /// </summary>
-public class WeaponQuickDrawService(IMod mod, IModHelper helper) : BaseService(mod, helper)
+public class WeaponQuickDrawService : BaseService
 {
-    private int? OriginalItem;
+    private Dictionary<ModConfig.WeaponQuickDrawMode, BaseWeaponQuickDrawStrategy> Strategies;
+
+    public WeaponQuickDrawService(IMod mod, IModHelper helper, ModConfig config) : base(mod, helper, config)
+    {
+        IEnumerable<BaseWeaponQuickDrawStrategy> strategies =
+        [
+            new AttackThenRevertStrategy(),
+            new CounterStrikeLikeStrategy(),
+        ];
+        this.Strategies = strategies.ToDictionary(x => x.Mode, x => x);
+    }
 
     internal override void _UpdateTicking(UpdateTickingEventArgs e)
     {
-        if (this.TryGetOriginalItem(out int originalItem))
-            this.RevertToOriginalItem(originalItem);
-    }
-
-    private bool TryGetOriginalItem(out int originalItem)
-    {
-        originalItem = -1;
-        Farmer player = Game1.player;
-        if (player.UsingTool) return false;
-        if (this.OriginalItem is null) return false;
-        originalItem = this.OriginalItem.Value;
-        if (!this.IsValidItemIndex(player, originalItem)) return false;
-
-        return true;
-    }
-
-    private void RevertToOriginalItem(int originalItem)
-    {
-        Farmer player = Game1.player;
-        if (this.IsValidItemIndex(player, originalItem)) player.CurrentToolIndex = originalItem;
-        this.OriginalItem = null;
+        if (this.Strategies.TryGetValue(this.Config.WeaponQuickDraw.Mode, out BaseWeaponQuickDrawStrategy? strategy))
+            strategy._UpdateTicking(e);
     }
 
     internal override void _ButtonPressed(ButtonPressedEventArgs e)
     {
         if (e.Button != SButton.Q) return;
-        if (this.TryGetWeaponItem(out int sowrdItem))
-            this.ExecuteWeaponAttack(sowrdItem);
+        if (this.Strategies.TryGetValue(this.Config.WeaponQuickDraw.Mode, out BaseWeaponQuickDrawStrategy? strategy))
+            strategy.ExecuteWeaponQuickDraw();
     }
 
-    private bool TryGetWeaponItem(out int sowrdItem)
+    private abstract class BaseWeaponQuickDrawStrategy(ModConfig.WeaponQuickDrawMode mode)
     {
-        sowrdItem = -1;
+        public ModConfig.WeaponQuickDrawMode Mode { get; init; } = mode;
 
-        Inventory inventory = Game1.player.Items;
-        for (int i = 0; i < inventory.Count; i++)
+        protected int? PreviousItem;
+
+        public abstract void ExecuteWeaponQuickDraw();
+
+        public virtual void _UpdateTicking(UpdateTickingEventArgs e)
         {
-            Item item = inventory[i];
-            if (item is null) continue;
-            if (item.Category == Object.weaponCategory)
-            {
-                sowrdItem = i;
-                return true;
-            }
         }
 
-        return false;
+        protected bool TryGetWeaponItem(out int weaponItem)
+        {
+            weaponItem = -1;
+
+            Inventory inventory = Game1.player.Items;
+            for (int i = 0; i < inventory.Count; i++)
+            {
+                Item item = inventory[i];
+                if (item is null) continue;
+                if (item.Category == Object.weaponCategory)
+                {
+                    weaponItem = i;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        protected bool IsValidItemIndex(Farmer player, int itemIndex)
+        {
+            return itemIndex >= 0 && itemIndex < player.Items.Count;
+        }
+
+        protected bool IsUsingWeapon(Farmer player)
+        {
+            if (player.CurrentItem is null) return false;
+            return player.CurrentItem.Category == Object.weaponCategory && player.UsingTool;
+        }
     }
 
-    private void ExecuteWeaponAttack(int weaponItem)
+    private class AttackThenRevertStrategy : BaseWeaponQuickDrawStrategy
     {
-        if (!Context.IsPlayerFree) return;
-        Farmer player = Game1.player;
-        if (!this.IsValidItemIndex(player, weaponItem)) return;
-        if (this.IsUsingWeapon(player)) return;
-        this.OriginalItem = player.CurrentToolIndex;
-        player.CurrentToolIndex = weaponItem;
-        if (player.usingSlingshot) player.usingSlingshot = false;
-        player.BeginUsingTool();
+        public AttackThenRevertStrategy() : base(ModConfig.WeaponQuickDrawMode.AttackThenRevert)
+        {
+        }
+
+        public override void ExecuteWeaponQuickDraw()
+        {
+            if (this.TryGetWeaponItem(out int weaponItem))
+                this.ExecuteWeaponAttack(weaponItem);
+        }
+
+        private void ExecuteWeaponAttack(int weaponItem)
+        {
+            if (!Context.IsPlayerFree) return;
+            Farmer player = Game1.player;
+            if (!this.IsValidItemIndex(player, weaponItem)) return;
+            if (this.IsUsingWeapon(player)) return;
+
+            if (player.usingSlingshot) player.usingSlingshot = false;
+            this.PreviousItem = player.CurrentToolIndex;
+            player.CurrentToolIndex = weaponItem;
+            player.BeginUsingTool();
+        }
+
+        public override void _UpdateTicking(UpdateTickingEventArgs e)
+        {
+            if (this.TryGetPreviousItem(out int previousItem))
+                this.RevertToPreviousItem(previousItem);
+        }
+
+        private bool TryGetPreviousItem(out int previousItem)
+        {
+            previousItem = -1;
+            Farmer player = Game1.player;
+            if (player.UsingTool) return false;
+            if (this.PreviousItem is null) return false;
+            previousItem = this.PreviousItem.Value;
+            if (!this.IsValidItemIndex(player, previousItem)) return false;
+
+            return true;
+        }
+
+        private void RevertToPreviousItem(int previousItem)
+        {
+            Farmer player = Game1.player;
+            if (this.IsValidItemIndex(player, previousItem)) player.CurrentToolIndex = previousItem;
+            this.PreviousItem = null;
+        }
     }
 
-    private bool IsValidItemIndex(Farmer player, int itemIndex)
+    private class CounterStrikeLikeStrategy : BaseWeaponQuickDrawStrategy
     {
-        return itemIndex >= 0 && itemIndex < player.Items.Count;
-    }
+        public CounterStrikeLikeStrategy() : base(ModConfig.WeaponQuickDrawMode.CounterStrikeLike)
+        {
+        }
 
-    private bool IsUsingWeapon(Farmer player)
-    {
-        if (player.CurrentItem is null) return false;
-        return player.CurrentItem.Category == Object.weaponCategory && player.UsingTool;
+        public override void ExecuteWeaponQuickDraw()
+        {
+            if (!this.TryGetWeaponItem(out int weaponItem)) return;
+
+            Farmer player = Game1.player;
+            if (player.usingSlingshot) player.usingSlingshot = false;
+            if (weaponItem == player.CurrentToolIndex)
+            {
+                if (this.PreviousItem is not null)
+                    player.CurrentToolIndex = this.PreviousItem.Value;
+            }
+            else
+                player.CurrentToolIndex = weaponItem;
+        }
+
+        public override void _UpdateTicking(UpdateTickingEventArgs e)
+        {
+            Farmer player = Game1.player;
+            if (player.CurrentItem?.Category == Object.weaponCategory) return;
+            this.PreviousItem = player.CurrentToolIndex;
+        }
     }
 }
