@@ -29,7 +29,20 @@ internal sealed class ModEntry : Mod
 
     private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
     {
+        this.LoadConfigOrDefault();
         this.IntegrateGenericModConfigMenu();
+    }
+
+    private void LoadConfigOrDefault()
+    {
+        try
+        {
+            this.Config = this.Helper.ReadConfig<ModConfig>();
+        }
+        catch (Exception)
+        {
+            this.Helper.WriteConfig(this.Config = ModConfig.Default);
+        }
     }
 
     private void IntegrateGenericModConfigMenu()
@@ -43,7 +56,7 @@ internal sealed class ModEntry : Mod
         // register mod
         configMenu.Register(
             mod: this.ModManifest,
-            reset: () => new ModConfig().DeepCloneTo(this.Config),
+            reset: () => ModConfig.Default.DeepCloneTo(this.Config),
             save: () => this.Helper.WriteConfig(this.Config)
         );
 
